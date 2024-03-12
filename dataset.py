@@ -28,9 +28,9 @@ class LatentFFHQ(Dataset):
         self.transform = transform
     
     def __getitem__(self, idx):
-        image = torch.from_numpy(np.load(self.root / f"{idx:05d}.npy"))
+        latent = torch.from_numpy(np.load(self.root / f"{idx:05d}.npy"))
 
-        return {"images": image}
+        return latent
     
     def __len__(self):
         return 70000

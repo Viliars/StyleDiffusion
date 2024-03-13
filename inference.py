@@ -89,7 +89,7 @@ def make_latents(pipeline,
     return image
 
 def main():
-    pipeline_path = "/home/anna/ml-hdd/Diffusion/pipe"
+    pipeline_path = "pipe"
     pipeline = PNDMPipeline.from_pretrained(pipeline_path, use_safetensors=True)
 
     for i in tqdm(range(0, data_size)):

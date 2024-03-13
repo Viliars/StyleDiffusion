@@ -13,6 +13,7 @@ device = 'cuda'
 data_size = 70000
 vae = AutoencoderKL.from_pretrained('vae')
 vae = vae.to(device)
+ffhq_path = '/home/anna/ml-hdd/ffhq512'
 
 def randn_tensor(
     shape,
@@ -96,7 +97,7 @@ def main():
         res = decode_img_latents(pipeline_output)[0]
         res.save(f"decoded/{i:05d}.png")
                 
-    fid = FidScore(['decoded', '/home/anna/ml-hdd/ffhq512'], 'device', batch_size)
+    fid = FidScore(['decoded', ffhq_path], device, batch_size)
     print("FID is", fid.calculate_fid_score())
     
     

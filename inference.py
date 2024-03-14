@@ -1,9 +1,7 @@
 import os
 import torch
 import numpy as np
-from diffusers import UNet2DModel, AutoencoderKL
-from diffusers import PNDMPipeline
-from accelerate import Accelerator
+from diffusers import AutoencoderKL
 from tqdm.auto import tqdm
 from diffusers import DDPMPipeline
 from PIL import Image
@@ -89,13 +87,15 @@ def make_latents(pipeline,
     return image
 
 def main():
-    pipeline_path = "pipe"
-    pipeline = PNDMPipeline.from_pretrained(pipeline_path, use_safetensors=True)
+    pipeline_path = "/home/anna/ml-hdd/Diffusion/model-epoch069"
+    pipeline = DDPMPipeline.from_pretrained(pipeline_path, use_safetensors=True)
+    pipeline = pipeline.to(device)
 
     for i in tqdm(range(0, data_size)):
-        pipeline_output = make_latents(pipeline, num_inference_steps=20).to(device)
-        res = decode_img_latents(pipeline_output)[0]
-        res.save(f"decoded/{i:05d}.png")
+        with torch.no_grad():
+            pipeline_output = make_latents(pipeline, num_inference_steps=50).to(device)
+            res = decode_img_latents(pipeline_output)[0]
+            res.save(f"decoded/{i:05d}.png")
                 
     fid = FidScore(['decoded', ffhq_path], device, batch_size)
     print("FID is", fid.calculate_fid_score())

@@ -44,15 +44,18 @@ def make_latents(pipeline,
     return image
 
 def main():
-    pipeline_path = "/home/anna/ml-hdd/Diffusion/model-epoch000"
+    pipeline_path = "/home/anna/ml-hdd/Diffusion/model-epoch011"
     pipeline = DDPMPipeline.from_pretrained(pipeline_path, use_safetensors=True)
     pipeline = pipeline.to(device)
+    batch_size=10
 
-    for i in tqdm(range(0, data_size)):
+    for i in tqdm(range(22000, data_size, batch_size)):
         with torch.no_grad():
-            pipeline_output = make_latents(pipeline, num_inference_steps=1000).to(device)
-            res = decode_img_latents(pipeline_output)[0]
-            res.save(f"decoded/{i:05d}.png")
+            pipeline_output = make_latents(pipeline, batch_size=batch_size, num_inference_steps=50).to(device)
+            res = decode_img_latents(pipeline_output)
+            for j in range(len(res)):
+                k = i + j
+                res[j].save(f"decoded/{k:05d}.png")
                 
     fid = FidScore(['decoded', ffhq_path], device, batch_size)
     print("FID is", fid.calculate_fid_score())

@@ -157,7 +157,7 @@ def main():
                 noisy_latents = noise_scheduler.add_noise(latents, noise, timesteps)
 
                 model_pred = unet(noisy_latents, timesteps, return_dict=False)[0]
-                loss = F.mse_loss(model_pred.float(), latents.float(), reduction="mean")
+                loss = F.mse_loss(model_pred.float(), noise.float(), reduction="mean")
 
                 avg_loss = accelerator.gather(loss.repeat(config.train_batch_size)).mean()
                 train_loss += avg_loss.item() / config.gradient_accumulation_steps

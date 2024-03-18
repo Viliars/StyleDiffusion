@@ -187,6 +187,8 @@ def main():
                 accelerator.log({"train_loss": train_loss}, step=global_step)
                 train_loss = 0.0
 
+        logger.info(f"Current LearningRate = {lr_scheduler.get_lr()}")
+
         if (epoch + 1) % config.save_model_epochs == 0 or epoch == config.num_train_epochs - 1:
             if accelerator.is_main_process:
                 save_path = os.path.join(config.output_dir, f"model-epoch{epoch:03d}")

@@ -7,7 +7,7 @@ class TrainingConfig:
     dataloader_num_workers = 4
     num_train_epochs = 100
     gradient_accumulation_steps = 1
-    learning_rate = 2.0e-06
+    learning_rate = 2.0e-05
     lr_warmup_steps = 500
     #save_image_epochs = 1
     save_model_epochs = 5

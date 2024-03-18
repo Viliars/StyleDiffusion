@@ -9,6 +9,7 @@ import diffusers
 from diffusers import UNet2DModel, DDPMScheduler, DDPMPipeline
 from diffusers.optimization import get_scheduler
 from diffusers.utils.import_utils import is_xformers_available
+from diffusers.training_utils import EMAModel
 from accelerate import Accelerator
 from accelerate.logging import get_logger
 from accelerate.utils import ProjectConfiguration, set_seed as accelerate_set_seed
@@ -22,16 +23,16 @@ logger = get_logger(__name__, log_level="INFO")
 
 def create_unet():
     model = UNet2DModel(
-        sample_size=64,
+        sample_size=32,
         in_channels=4,
         out_channels=4,
         center_input_sample=False,
         time_embedding_type='positional',
         freq_shift=0,
         flip_sin_to_cos=True,
-        down_block_types=("DownBlock2D", "DownBlock2D", "AttnDownBlock2D", "DownBlock2D"),
-        up_block_types=("UpBlock2D", "AttnUpBlock2D", "UpBlock2D", "UpBlock2D"),
-        block_out_channels=(320, 640, 1280, 1280),
+        down_block_types=("DownBlock2D", "AttnDownBlock2D", "DownBlock2D"),
+        up_block_types=("UpBlock2D", "AttnUpBlock2D", "UpBlock2D"),
+        block_out_channels=(320, 640, 1280),
         layers_per_block=2,
         mid_block_scale_factor=1,
         downsample_padding=1,
@@ -87,6 +88,10 @@ def main():
 
     # создаем модель
     unet = create_unet()
+
+    if config.use_ema:
+        ema_unet = EMAModel(unet.parameters(), model_cls=UNet2DModel, model_config=unet.config)
+
     unet.train()
 
     if config.enable_xformers_memory_efficient_attention:
@@ -99,7 +104,7 @@ def main():
     optimizer = torch.optim.AdamW(unet.parameters(), lr=config.learning_rate)
 
     # создаем датасет и лоадер
-    train_dataset = LatentFFHQ(root="dataset") #, transform=preprocess)
+    train_dataset = LatentFFHQ(root="latent32") #, transform=preprocess)
     train_dataloader = DataLoader(train_dataset,
         batch_size=config.train_batch_size,
         num_workers=config.dataloader_num_workers,
@@ -119,6 +124,9 @@ def main():
     unet, optimizer, train_dataloader, lr_scheduler = accelerator.prepare(
         unet, optimizer, train_dataloader, lr_scheduler
     )
+
+    if config.use_ema:
+        ema_unet.to(accelerator.device)
 
     if accelerator.is_main_process:
         run = os.path.split(__file__)[-1].split(".")[0]
@@ -171,6 +179,9 @@ def main():
                 optimizer.zero_grad()
 
             if accelerator.sync_gradients:
+                if config.use_ema:
+                    ema_unet.step(unet.parameters())
+
                 progress_bar.update(1)
                 global_step += 1
                 accelerator.log({"train_loss": train_loss}, step=global_step)
@@ -179,7 +190,12 @@ def main():
         if (epoch + 1) % config.save_model_epochs == 0 or epoch == config.num_train_epochs - 1:
             if accelerator.is_main_process:
                 save_path = os.path.join(config.output_dir, f"model-epoch{epoch:03d}")
-                pipeline = DDPMPipeline(unet=accelerator.unwrap_model(unet), scheduler=noise_scheduler)
+                unwraped_unet = accelerator.unwrap_model(unet)
+
+                if config.use_ema:
+                    ema_unet.copy_to(unwraped_unet.parameters())
+
+                pipeline = DDPMPipeline(unet=unwraped_unet, scheduler=noise_scheduler)
                 pipeline.save_pretrained(save_path)
 
                 logger.info(f"Saved state to {save_path}")

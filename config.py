@@ -14,6 +14,7 @@ class TrainingConfig:
     mixed_precision = "bf16"  # `no` for float32, `fp16` for automatic mixed precision
     lr_scheduler = "constant"
     use_ema = True
+    snr_gamma = True
 
     output_dir = "latent-ffhq-256"  # the model name locally
     overwrite_output_dir = True  # overwrite the old model

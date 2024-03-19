@@ -165,7 +165,22 @@ def main():
                 noisy_latents = noise_scheduler.add_noise(latents, noise, timesteps)
 
                 model_pred = unet(noisy_latents, timesteps, return_dict=False)[0]
-                loss = F.mse_loss(model_pred.float(), noise.float(), reduction="mean")
+
+                if config.snr_gamma is None:
+                    loss = F.mse_loss(model_pred.float(), noise.float(), reduction="mean")
+                else:
+                    snr = compute_snr(noise_scheduler, timesteps)
+                    mse_loss_weights = torch.stack([snr, args.snr_gamma * torch.ones_like(timesteps)], dim=1).min(
+                        dim=1
+                    )[0]
+                    if noise_scheduler.config.prediction_type == "epsilon":
+                        mse_loss_weights = mse_loss_weights / snr
+                    elif noise_scheduler.config.prediction_type == "v_prediction":
+                        mse_loss_weights = mse_loss_weights / (snr + 1)
+
+                    loss = F.mse_loss(model_pred.float(), noise.float(), reduction="none")
+                    loss = loss.mean(dim=list(range(1, len(loss.shape)))) * mse_loss_weights
+                    loss = loss.mean()
 
                 avg_loss = accelerator.gather(loss.repeat(config.train_batch_size)).mean()
                 train_loss += avg_loss.item() / config.gradient_accumulation_steps

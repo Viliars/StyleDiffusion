@@ -3,11 +3,11 @@ from dataclasses import dataclass
 @dataclass
 class TrainingConfig:
     # train
-    train_batch_size = 64
+    train_batch_size = 100
     dataloader_num_workers = 4
     num_train_epochs = 100
     gradient_accumulation_steps = 1
-    learning_rate = 2.0e-05
+    learning_rate = 1.0e-04
     lr_warmup_steps = 500
     #save_image_epochs = 1
     save_model_epochs = 5

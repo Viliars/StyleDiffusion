@@ -9,7 +9,7 @@ import diffusers
 from diffusers import UNet2DModel, DDPMScheduler, DDPMPipeline
 from diffusers.optimization import get_scheduler
 from diffusers.utils.import_utils import is_xformers_available
-from diffusers.training_utils import EMAModel
+from diffusers.training_utils import EMAModel, compute_snr
 from accelerate import Accelerator
 from accelerate.logging import get_logger
 from accelerate.utils import ProjectConfiguration, set_seed as accelerate_set_seed

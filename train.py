@@ -166,7 +166,7 @@ def main():
 
                 model_pred = unet(noisy_latents, timesteps, return_dict=False)[0]
 
-                if config.snr_gamma is None:
+                if not config.snr_gamma:
                     loss = F.mse_loss(model_pred.float(), noise.float(), reduction="mean")
                 else:
                     snr = compute_snr(noise_scheduler, timesteps)

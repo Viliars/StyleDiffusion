@@ -164,10 +164,15 @@ def main():
 
                 noisy_latents = noise_scheduler.add_noise(latents, noise, timesteps)
 
+                if noise_scheduler.config.prediction_type == "epsilon":
+                    target = noise
+                elif noise_scheduler.config.prediction_type == "v_prediction":
+                    target = noise_scheduler.get_velocity(latents, noise, timesteps)
+
                 model_pred = unet(noisy_latents, timesteps, return_dict=False)[0]
 
                 if not config.snr_gamma:
-                    loss = F.mse_loss(model_pred.float(), noise.float(), reduction="mean")
+                    loss = F.mse_loss(model_pred.float(), target.float(), reduction="mean")
                 else:
                     snr = compute_snr(noise_scheduler, timesteps)
                     mse_loss_weights = torch.stack([snr, args.snr_gamma * torch.ones_like(timesteps)], dim=1).min(
@@ -178,7 +183,7 @@ def main():
                     elif noise_scheduler.config.prediction_type == "v_prediction":
                         mse_loss_weights = mse_loss_weights / (snr + 1)
 
-                    loss = F.mse_loss(model_pred.float(), noise.float(), reduction="none")
+                    loss = F.mse_loss(model_pred.float(), target.float(), reduction="none")
                     loss = loss.mean(dim=list(range(1, len(loss.shape)))) * mse_loss_weights
                     loss = loss.mean()
 

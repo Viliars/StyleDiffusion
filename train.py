@@ -175,7 +175,7 @@ def main():
                     loss = F.mse_loss(model_pred.float(), target.float(), reduction="mean")
                 else:
                     snr = compute_snr(noise_scheduler, timesteps)
-                    mse_loss_weights = torch.stack([snr, args.snr_gamma * torch.ones_like(timesteps)], dim=1).min(
+                    mse_loss_weights = torch.stack([snr, config.snr_gamma * torch.ones_like(timesteps)], dim=1).min(
                         dim=1
                     )[0]
                     if noise_scheduler.config.prediction_type == "epsilon":

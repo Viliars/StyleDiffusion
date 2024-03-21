@@ -22,25 +22,30 @@ logger = get_logger(__name__, log_level="INFO")
 
 
 def create_unet():
-    model = UNet2DModel(
-        sample_size=32,
-        in_channels=4,
-        out_channels=4,
-        center_input_sample=False,
-        time_embedding_type='positional',
-        freq_shift=0,
-        flip_sin_to_cos=True,
-        down_block_types=("DownBlock2D", "AttnDownBlock2D", "DownBlock2D"),
-        up_block_types=("UpBlock2D", "AttnUpBlock2D", "UpBlock2D"),
-        block_out_channels=(320, 640, 1280),
-        layers_per_block=2,
-        mid_block_scale_factor=1,
-        downsample_padding=1,
-        norm_eps=1e-05,
-        norm_num_groups=32,
-        attention_head_dim=8,
-        act_fn="silu"
-    )
+    if config.pretrained is None:
+        model = UNet2DModel(
+            sample_size=32,
+            in_channels=4,
+            out_channels=4,
+            center_input_sample=False,
+            time_embedding_type='positional',
+            freq_shift=0,
+            flip_sin_to_cos=True,
+            down_block_types=("DownBlock2D", "AttnDownBlock2D", "DownBlock2D"),
+            up_block_types=("UpBlock2D", "AttnUpBlock2D", "UpBlock2D"),
+            block_out_channels=(320, 640, 1280),
+            layers_per_block=2,
+            mid_block_scale_factor=1,
+            downsample_padding=1,
+            norm_eps=1e-05,
+            norm_num_groups=32,
+            attention_head_dim=8,
+            act_fn="silu"
+        )
+        logger.info("The UNet2DModel was created from scratch!")
+    else:
+        model = UNet2DModel.from_pretrained(config.pretrained, use_safetensors=True)
+        logger.info("The UNet2DModel was loaded from the checkpoint!")
 
     return model
 

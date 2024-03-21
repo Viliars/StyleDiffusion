@@ -35,5 +35,7 @@ class TrainingConfig:
     # hz
     max_grad_norm = 1.0
 
+    pretrained = 'latent-ffhq-256-vpred2/model-epoch099/unet'
+
 
 config = TrainingConfig()

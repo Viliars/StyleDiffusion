@@ -116,7 +116,7 @@ def main():
         shuffle=True
     )
 
-    num_update_steps_per_epoch = math.ceil(len(train_dataloader) / args.gradient_accumulation_steps)
+    num_update_steps_per_epoch = math.ceil(len(train_dataloader) / config.gradient_accumulation_steps)
     config.max_train_steps = config.num_train_epochs * num_update_steps_per_epoch
 
     lr_scheduler = get_cosine_schedule_with_warmup(

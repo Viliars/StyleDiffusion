@@ -7,7 +7,7 @@ import torch.nn.functional as F
 from torch.utils.data import DataLoader
 import diffusers
 from diffusers import UNet2DModel, DDPMScheduler, DDPMPipeline
-from diffusers.optimization import get_scheduler
+from diffusers.optimization import get_cosine_schedule_with_warmup
 from diffusers.utils.import_utils import is_xformers_available
 from diffusers.training_utils import EMAModel, compute_snr
 from accelerate import Accelerator
@@ -31,9 +31,9 @@ def create_unet():
             time_embedding_type='positional',
             freq_shift=0,
             flip_sin_to_cos=True,
-            down_block_types=("DownBlock2D", "AttnDownBlock2D", "DownBlock2D"),
-            up_block_types=("UpBlock2D", "AttnUpBlock2D", "UpBlock2D"),
-            block_out_channels=(320, 640, 1280),
+            down_block_types=("DownBlock2D", "DownBlock2D", "AttnDownBlock2D", "DownBlock2D"),
+            up_block_types=("UpBlock2D", "AttnUpBlock2D", "UpBlock2D", "UpBlock2D"),
+            block_out_channels=(160, 320, 640, 1280),
             layers_per_block=2,
             mid_block_scale_factor=1,
             downsample_padding=1,
@@ -116,11 +116,10 @@ def main():
         shuffle=True
     )
 
-    num_update_steps_per_epoch = math.ceil(len(train_dataloader) / config.gradient_accumulation_steps)
+    num_update_steps_per_epoch = math.ceil(len(train_dataloader) / args.gradient_accumulation_steps)
     config.max_train_steps = config.num_train_epochs * num_update_steps_per_epoch
 
-    lr_scheduler = get_scheduler(
-        config.lr_scheduler,
+    lr_scheduler = get_cosine_schedule_with_warmup(
         optimizer=optimizer,
         num_warmup_steps=config.lr_warmup_steps * accelerator.num_processes,
         num_training_steps=config.max_train_steps * accelerator.num_processes,
@@ -154,7 +153,7 @@ def main():
 
     for epoch in range(config.num_train_epochs):
         train_loss = 0.0
-        progress_bar = tqdm(total=num_update_steps_per_epoch, disable=not accelerator.is_local_main_process)
+        progress_bar = tqdm(total=(num_update_steps_per_epoch // accelerator.num_processes), disable=not accelerator.is_local_main_process)
         progress_bar.set_description(f"Epoch {epoch}")
 
         for step, latents in enumerate(train_dataloader):
@@ -208,11 +207,10 @@ def main():
                     ema_unet.step(unet.parameters())
 
                 progress_bar.update(1)
+                progress_bar.set_description(f"LR {lr_scheduler.get_lr()}; Epoch {epoch}")
                 global_step += 1
                 accelerator.log({"train_loss": train_loss}, step=global_step)
                 train_loss = 0.0
-
-        logger.info(f"Current LearningRate = {lr_scheduler.get_lr()}")
 
         if (epoch + 1) % config.save_model_epochs == 0 or epoch == config.num_train_epochs - 1:
             if accelerator.is_main_process:
